@@ -140,6 +140,43 @@
   <button class="btn btn-ghost" onclick="resetToPin()">↩ Changer de compte</button>
 </div>
 
+<!-- DEV TEST SCREEN -->
+<div class="screen" id="screen-dev">
+  <div class="staff-badge" style="background:#9333ea;">🛠 Mode développeur</div>
+  <h2>Zone de test</h2>
+  <p>Pas besoin de scanner — entrez les infos directement</p>
+
+  <div class="field">
+    <label style="font-size:11px;color:#888;font-weight:500;letter-spacing:0.05em;text-transform:uppercase;display:block;margin-bottom:6px;">Code staff</label>
+    <select id="dev-staff" class="amount-input" style="font-size:15px;width:100%;border:1.5px solid #e0e0e0;border-radius:10px;padding:13px;background:#fff;">
+      <option value="1001">1001 — Gabriella</option>
+      <option value="1002" selected>1002 — Yorgos</option>
+      <option value="1003">1003 — Damiano</option>
+      <option value="1004">1004 — Emanuelle</option>
+      <option value="1005">1005 — Davide</option>
+      <option value="1006">1006 — Hans</option>
+    </select>
+  </div>
+
+  <div class="field" style="margin-top:10px;">
+    <label style="font-size:11px;color:#888;font-weight:500;letter-spacing:0.05em;text-transform:uppercase;display:block;margin-bottom:6px;">Pass ID client (test)</label>
+    <input type="text" id="dev-passid" value="31TSqnfzLVcOJ5T4Dy3TtE" style="width:100%;padding:13px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;font-family:monospace;box-sizing:border-box;">
+  </div>
+
+  <div class="mode-grid" style="margin-top:10px;">
+    <button class="mode-btn earn" onclick="devGo('earn')">
+      <div class="mode-icon">➕</div>
+      <div class="mode-title">Ajouter</div>
+    </button>
+    <button class="mode-btn redeem" onclick="devGo('redeem')">
+      <div class="mode-icon">🎁</div>
+      <div class="mode-title">Utiliser</div>
+    </button>
+  </div>
+
+  <button class="btn btn-ghost" onclick="resetToPin()">↩ Quitter le mode test</button>
+</div>
+
 <!-- SCAN SCREEN (earn) -->
 <div class="screen" id="screen-scan">
   <div class="staff-badge" id="staff-badge">👤 —</div>
@@ -220,7 +257,7 @@
 </div>
 
 <script>
-const AIRTABLE_TOKEN = 'paty5mShyBbK2wTHH.b3e08d5693592a8e89ba535d7ec51b4dc817fec0b61d284c339a76b6a99aa0fe';
+const AIRTABLE_TOKEN = 'PASTE_YOUR_TOKEN_HERE';
 const AIRTABLE_BASE = 'app6JP5PFxPrGRpVS';
 const AIRTABLE_TABLE = 'tbl7m5sBvDgyoo8P0';
 const WEBHOOK_EARN = 'https://hook.eu1.make.com/j8simbkde699mjkkd51losi4fvid07n6';
@@ -271,6 +308,13 @@ function updatePinDisplay() {
 }
 
 function pinConfirm() {
+  if (pinValue === '9999') {
+    pinValue = '';
+    updatePinDisplay();
+    document.getElementById('pin-error').textContent = '';
+    show('screen-dev');
+    return;
+  }
   var name = STAFF_PINS[pinValue];
   if (name) {
     currentStaff = name;
@@ -286,6 +330,24 @@ function pinConfirm() {
     document.getElementById('pin-error').textContent = 'Code incorrect. Réessayez.';
     pinValue = '';
     updatePinDisplay();
+  }
+}
+
+function devGo(mode) {
+  var staffPin = document.getElementById('dev-staff').value;
+  var passId = document.getElementById('dev-passid').value.trim();
+  currentStaff = STAFF_PINS[staffPin];
+  currentPassId = passId;
+  currentMode = mode;
+  if (mode === 'earn') {
+    document.getElementById('order-amount').value = '';
+    updateTotal();
+    show('screen-pizza');
+  } else {
+    document.getElementById('redeem-balance-text').textContent = 'Chargement...';
+    show('screen-redeem');
+    buildRewardOptions(0);
+    fetchPointsBalance(passId);
   }
 }
 
@@ -361,9 +423,13 @@ async function onRedeemScan(decoded) {
   document.getElementById('redeem-balance-text').textContent = 'Chargement...';
   show('screen-redeem');
   buildRewardOptions(0);
+  fetchPointsBalance(decoded);
+}
+
+async function fetchPointsBalance(passId) {
   try {
     var url = 'https://api.airtable.com/v0/' + AIRTABLE_BASE + '/' + AIRTABLE_TABLE +
-      '?filterByFormula=' + encodeURIComponent('{ID Client}="' + decoded + '"') +
+      '?filterByFormula=' + encodeURIComponent('{ID Client}="' + passId + '"') +
       '&fields[]=Solde%20de%20points';
     var r = await fetch(url, {
       headers: { 'Authorization': 'Bearer ' + AIRTABLE_TOKEN }
